@@ -86,6 +86,14 @@ impl Encoder {
             written: 1,
         })
     }
+
+    /// Skip writing the header byte (because it is optional)
+    /// 
+    pub fn skip_header(mut self) -> Self {
+        self.header_written = true;
+        self
+    }
+
 }
 
 impl core::ops::AddAssign for EncodeTotals {

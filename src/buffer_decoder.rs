@@ -6,8 +6,11 @@ use super::*;
 /// Decoder buffer allow to decode a stream piece by piece
 /// 
 pub struct DecoderBuffer<const CAPACITY: usize> {
+
     buf: BasicBuffer<CAPACITY>,
-    is_escaping: bool
+    is_escaping: bool,
+    header_found: bool,
+    search_for_header: bool,
 }
 
 
@@ -18,7 +21,9 @@ impl<const CAPACITY: usize> DecoderBuffer<CAPACITY> {
     pub fn new() -> Self {
         Self {
             buf: BasicBuffer::new(),
-            is_escaping: false
+            is_escaping: false,
+            header_found: false,
+            search_for_header: true,
         }
     }
 
@@ -26,6 +31,7 @@ impl<const CAPACITY: usize> DecoderBuffer<CAPACITY> {
     /// 
     pub fn reset(&mut self) {
         self.is_escaping = false;
+        self.header_found = false;
         self.buf.reset();
     }
 
@@ -89,6 +95,14 @@ impl<const CAPACITY: usize> DecoderBuffer<CAPACITY> {
         // Input buffer processed, but no packet end yet detected
         Ok((i, false))
     }
+
+    /// Skip reading the header byte (because it is optional)
+    /// 
+    pub fn do_not_search_header(mut self) -> Self {
+        self.search_for_header = false;
+        self
+    }
+
 }
 
 
@@ -99,22 +113,27 @@ mod tests {
 
     #[test]
     fn test_decoder_buffer() {
+
+        // let [END, 0x01, 0x02, 0x03, 0xDB, 0xDC, END];
+
         let mut buf = DecoderBuffer::<32>::new();
         assert_eq!(buf.slice(), &[]);
 
-        let input = [0x01, 0x02, 0x03, 0x04, 0x05];
-        let (bytes_processed, is_end_of_packet) = buf.feed(&input).unwrap();
-        assert_eq!(bytes_processed, 5);
-        assert_eq!(is_end_of_packet, false);
-        assert_eq!(buf.slice(), &input);
+        let (processed, found) = buf.feed(&[0x01, 0x02, 0x03]).unwrap();
+        assert_eq!(processed, 3);
+        assert_eq!(found, false);
 
-        let input = [0x01, 0x02, 0x03, 0x04, 0x05, END];
-        let (bytes_processed, is_end_of_packet) = buf.feed(&input).unwrap();
-        assert_eq!(bytes_processed, 6);
-        assert_eq!(is_end_of_packet, true);
-        assert_eq!(buf.slice(), &input[..5]);
+        let (processed, found) = buf.feed(&[0x01, 0x02, 0x03]).unwrap();
+        assert_eq!(processed, 3);
+        assert_eq!(found, false);
 
+        let (processed, found) = buf.feed(&[0x01, END]).unwrap();
+        assert_eq!(processed, 2);
+        assert_eq!(found, true);
+
+        assert_eq!(buf.slice(), &[0x01, 0x02, 0x03, 0x01, 0x02, 0x03, 0x01]);
         buf.reset();
         assert_eq!(buf.slice(), &[]);
+
     }
 }

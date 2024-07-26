@@ -106,6 +106,13 @@ impl Decoder {
     fn esc_sequence_empty(&mut self) {
         self.esc_seq_len = 0;
     }
+
+    /// Skip reading the header byte (because it is optional)
+    /// 
+    pub fn do_not_search_header(mut self) -> Self {
+        self.header_found = true;
+        self
+    }
 }
 
 #[cfg(test)]

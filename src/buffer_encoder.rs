@@ -8,6 +8,7 @@ use super::*;
 /// 
 pub struct EncoderBuffer<const CAPACITY: usize> {
     buf: BasicBuffer<CAPACITY>,
+    header_written: bool,
 }
 
 
@@ -18,6 +19,7 @@ impl<const CAPACITY: usize> EncoderBuffer<CAPACITY> {
     pub fn new() -> Self {
         Self {
             buf: BasicBuffer::new(),
+            header_written: false,
         }
     }
 
@@ -83,6 +85,14 @@ impl<const CAPACITY: usize> EncoderBuffer<CAPACITY> {
     pub fn finish(&mut self) -> BufferResult<()>{
         Ok(self.buf.put(END)?)
     }
+
+    /// Skip writing the header byte (because it is optional)
+    /// 
+    pub fn skip_header(mut self) -> Self {
+        self.header_written = true;
+        self
+    }
+
 }
 
 
@@ -99,12 +109,9 @@ mod tests {
         assert_eq!(buf.slice(), &[0x01, 0x02, 0x03]);
 
         buf.feed(&[0xC0]).unwrap();
-        assert_eq!(buf.slice(), &[0xDB, 0xDC]);
-
-        buf.feed(&[0x04, 0x05, 0x06]).unwrap();
-        assert_eq!(buf.slice(), &[0xDB, 0xDC, 0x04, 0x05, 0x06]);
+        assert_eq!(buf.slice(), &[0x01, 0x02, 0x03, 0xDB, 0xDC]);
 
         buf.finish().unwrap();
-        assert_eq!(buf.slice(), &[0xDB, 0xDC, 0x04, 0x05, 0x06, 0xC0]);
+        assert_eq!(buf.slice(), &[0x01, 0x02, 0x03, 0xDB, 0xDC, END]);
     }
 }
