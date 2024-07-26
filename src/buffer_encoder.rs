@@ -9,6 +9,7 @@ use super::*;
 pub struct EncoderBuffer<const CAPACITY: usize> {
     buf: BasicBuffer<CAPACITY>,
     header_written: bool,
+    skip_header: bool,
 }
 
 
@@ -20,13 +21,15 @@ impl<const CAPACITY: usize> EncoderBuffer<CAPACITY> {
         Self {
             buf: BasicBuffer::new(),
             header_written: false,
+            skip_header: false,
         }
     }
 
     /// Reset the buffer
     /// 
-    pub fn reset(&mut self) {
+    pub fn reset(&mut self) -> BufferResult<()> {
         self.buf.reset();
+        Ok(())
     }
 
     /// Get the slice of the buffer
@@ -38,6 +41,14 @@ impl<const CAPACITY: usize> EncoderBuffer<CAPACITY> {
     /// Feed the buffer with input data
     /// 
     pub fn feed(&mut self, input: &[u8]) -> BufferResult<usize>{
+
+        if !self.skip_header {
+            if !self.header_written {
+                self.buf.put(END)?;
+                self.header_written = true;  
+            }
+        }
+
         let mut i = 0;
         while i < input.len() {
             let c = input[i];
@@ -83,13 +94,21 @@ impl<const CAPACITY: usize> EncoderBuffer<CAPACITY> {
     /// Finish the encoding
     /// 
     pub fn finish(&mut self) -> BufferResult<()>{
+
+        if !self.skip_header {
+            if !self.header_written {
+                self.buf.put(END)?;
+                self.header_written = true;  
+            }
+        }
+
         Ok(self.buf.put(END)?)
     }
 
     /// Skip writing the header byte (because it is optional)
     /// 
     pub fn skip_header(mut self) -> Self {
-        self.header_written = true;
+        self.skip_header = true;
         self
     }
 
@@ -101,8 +120,31 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_encoder_buffer_empty() {
+        let mut buf = EncoderBuffer::<32>::new();
+        buf.finish().unwrap();
+        assert_eq!(buf.slice(), &[END, END]);
+    }
+
+    #[test]
     fn test_encoder_buffer() {
         let mut buf = EncoderBuffer::<32>::new();
+        
+        buf.feed(&[0x01, 0x02, 0x03]).unwrap();
+        assert_eq!(buf.slice(), &[END, 0x01, 0x02, 0x03]);
+
+        buf.feed(&[0xC0]).unwrap();
+        assert_eq!(buf.slice(), &[END, 0x01, 0x02, 0x03, 0xDB, 0xDC]);
+
+        buf.finish().unwrap();
+        assert_eq!(buf.slice(), &[END, 0x01, 0x02, 0x03, 0xDB, 0xDC, END]);
+    }
+
+    
+    #[test]
+    fn test_encoder_buffer_with_header() {
+        let mut buf = EncoderBuffer::<32>::new()
+            .skip_header();
         assert_eq!(buf.slice(), &[]);
 
         buf.feed(&[0x01, 0x02, 0x03]).unwrap();
@@ -113,5 +155,6 @@ mod tests {
 
         buf.finish().unwrap();
         assert_eq!(buf.slice(), &[0x01, 0x02, 0x03, 0xDB, 0xDC, END]);
+
     }
 }

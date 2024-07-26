@@ -44,7 +44,28 @@ impl<const CAPACITY: usize> DecoderBuffer<CAPACITY> {
     /// Feed the buffer with input data
     /// 
     pub fn feed(&mut self, input: &[u8]) -> BufferResult<(usize, bool)> {
+
         let mut i = 0;
+
+        // If we are at the beginning of the buffer, we need to check for the header
+        if self.buf.is_first_byte() {
+            if self.search_for_header {
+                if !self.header_found {
+                    if input.len() < 1 {
+                        return Err(BufferError{ pos: 0, code: Error::BadHeaderDecode});
+                    }
+
+                    if input[0] != END {
+                        return Err(BufferError{ pos: 0, code: Error::BadHeaderDecode});
+                    }
+
+                    i += 1;
+
+                    self.header_found = true;
+                }
+            }
+        }
+
 
         while i < input.len() {
             let c = input[i]; // Consume 1 char from input buffer
@@ -111,12 +132,34 @@ impl<const CAPACITY: usize> DecoderBuffer<CAPACITY> {
 mod tests {
     use super::*;
 
+    
     #[test]
     fn test_decoder_buffer() {
 
+        let mut buf = DecoderBuffer::<32>::new();
+        assert_eq!(buf.slice(), &[]);
+
+
+        let r = buf.feed(&[0x01, 0x02, 0x03]);
+        assert_eq!(r.is_err(), true);
+
+        let (processed, found) = buf.feed(&[END, 0x01, 0x02, 0x03]).unwrap();
+        assert_eq!(processed, 4);
+        assert_eq!(found, false);
+
+        let (processed, found) = buf.feed(&[0x01, END]).unwrap();
+        assert_eq!(processed, 2);
+        assert_eq!(found, true);
+
+        assert_eq!(buf.slice(), &[0x01, 0x02, 0x03, 0x01]);
+    }
+
+    #[test]
+    fn test_decoder_buffer_without_header() {
+
         // let [END, 0x01, 0x02, 0x03, 0xDB, 0xDC, END];
 
-        let mut buf = DecoderBuffer::<32>::new();
+        let mut buf = DecoderBuffer::<32>::new().do_not_search_header();
         assert_eq!(buf.slice(), &[]);
 
         let (processed, found) = buf.feed(&[0x01, 0x02, 0x03]).unwrap();

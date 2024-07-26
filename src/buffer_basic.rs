@@ -20,6 +20,10 @@ impl<const CAPACITY: usize> BasicBuffer<CAPACITY> {
         &self.buf[..self.idx]
     }
 
+    pub fn is_first_byte(&self) -> bool {
+        self.idx == 0
+    }
+
     pub fn put(&mut self, c: u8)-> Result<()> {
         if self.idx >= CAPACITY {
             Err(Error::BufferFull)
