@@ -139,9 +139,10 @@ mod tests {
         let mut buf = DecoderBuffer::<32>::new();
         assert_eq!(buf.slice(), &[]);
 
-
         let r = buf.feed(&[0x01, 0x02, 0x03]);
         assert_eq!(r.is_err(), true);
+        // use do_not_search_header to not get an error here
+        // let mut buf = DecoderBuffer::<32>::new().do_not_search_header();
 
         let (processed, found) = buf.feed(&[END, 0x01, 0x02, 0x03]).unwrap();
         assert_eq!(processed, 4);
@@ -156,8 +157,6 @@ mod tests {
 
     #[test]
     fn test_decoder_buffer_without_header() {
-
-        // let [END, 0x01, 0x02, 0x03, 0xDB, 0xDC, END];
 
         let mut buf = DecoderBuffer::<32>::new().do_not_search_header();
         assert_eq!(buf.slice(), &[]);

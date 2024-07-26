@@ -71,7 +71,29 @@
 //! assert_eq!(&DATA, output_slice);
 //! assert_eq!(true, is_end_of_packet);
 //! ```
-
+//!
+//! ### Buffered Decoding
+//!
+//! To be able to decode a stream chunk by chunk
+//! 
+//! ```
+//! let mut buf = DecoderBuffer::<32>::new();
+//! assert_eq!(buf.slice(), &[]);
+//! 
+//! let r = buf.feed(&[0x01, 0x02, 0x03]);
+//! assert_eq!(r.is_err(), true);
+//! // use do_not_search_header to not get an error here
+//! // let mut buf = DecoderBuffer::<32>::new().do_not_search_header();
+//! 
+//! let (processed, found) = buf.feed(&[END, 0x01, 0x02, 0x03]).unwrap();
+//! assert_eq!(processed, 4);
+//! assert_eq!(found, false);
+//! 
+//! let (processed, found) = buf.feed(&[0x01, END]).unwrap();
+//! assert_eq!(processed, 2);
+//! assert_eq!(found, true);
+//! assert_eq!(buf.slice(), &[0x01, 0x02, 0x03, 0x01]);
+//! 
 #![deny(missing_docs)]
 #![deny(warnings)]
 #![no_std]

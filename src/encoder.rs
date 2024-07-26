@@ -125,6 +125,21 @@ mod tests {
     }
 
     #[test]
+    fn empty_encode_skip_header() {
+        const EXPECTED: [u8; 1] = [ END ];
+        let mut output: [u8; 32] = [0; 32];
+
+        let mut slip = Encoder::new().skip_header();
+        let mut totals = slip.encode(&[0; 0], &mut output).unwrap();
+        assert_eq!(0, totals.read);
+        assert_eq!(0, totals.written);
+        totals += slip.finish(&mut output[totals.written..]).unwrap();
+        assert_eq!(0, totals.read);
+        assert_eq!(1, totals.written);
+        assert_eq!(&EXPECTED, &output[..totals.written]);
+    }
+
+    #[test]
     fn encode_esc_esc_sequence() {
         const INPUT: [u8; 3] = [0x01, ESC, 0x03];
         const EXPECTED: [u8; 6] = [0xc0, 0x01, ESC, ESC_ESC, 0x03, 0xc0];
