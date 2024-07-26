@@ -80,9 +80,16 @@ mod decoder;
 mod encoder;
 mod error;
 
+mod buffer_basic;
+mod buffer_decoder;
+mod buffer_encoder;
+
 pub use decoder::Decoder;
 pub use encoder::{EncodeTotals, Encoder};
-pub use error::{Error, Result};
+pub use error::{Error, Result, BufferResult};
+
+pub use buffer_decoder::DecoderBuffer;
+pub use buffer_encoder::EncoderBuffer;
 
 /// Frame end
 const END: u8 = 0xC0;

@@ -4,6 +4,8 @@ use core::fmt;
 
 /// Type alias for handling SLIP errors.
 pub type Result<T> = core::result::Result<T, self::Error>;
+/// Type alias for handling SLIP buffer errors.
+pub type BufferResult<T> = core::result::Result<T, self::BufferError>;
 
 /// Errors encountered by SLIP.
 #[derive(Debug)]
@@ -19,6 +21,10 @@ pub enum Error {
     BadHeaderDecode,
     /// The decoder cannot process the SLIP escape sequence.
     BadEscapeSequenceDecode,
+
+    // Buffer errors
+    /// The buffer is full.
+    BufferFull
 }
 
 impl fmt::Display for Error {
@@ -28,6 +34,19 @@ impl fmt::Display for Error {
             Error::NoOutputSpaceForEndByte => "insufficient space in output buffer for end byte",
             Error::BadHeaderDecode => "malformed header",
             Error::BadEscapeSequenceDecode => "malformed escape sequence",
+            Error::BufferFull => "buffer full",
         })
+    }
+}
+
+#[derive(Debug)]
+pub struct BufferError {
+    pub pos: usize,
+    pub code: Error,
+}
+
+impl From<Error> for BufferError {
+    fn from(err: Error) -> Self {
+        Self {pos: 0, code: err}
     }
 }
