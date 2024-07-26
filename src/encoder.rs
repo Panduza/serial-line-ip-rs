@@ -86,6 +86,14 @@ impl Encoder {
             written: 1,
         })
     }
+
+    /// Skip writing the header byte (because it is optional)
+    /// 
+    pub fn skip_header(mut self) -> Self {
+        self.header_written = true;
+        self
+    }
+
 }
 
 impl core::ops::AddAssign for EncodeTotals {
@@ -113,6 +121,21 @@ mod tests {
         totals += slip.finish(&mut output[totals.written..]).unwrap();
         assert_eq!(0, totals.read);
         assert_eq!(2, totals.written);
+        assert_eq!(&EXPECTED, &output[..totals.written]);
+    }
+
+    #[test]
+    fn empty_encode_skip_header() {
+        const EXPECTED: [u8; 1] = [ END ];
+        let mut output: [u8; 32] = [0; 32];
+
+        let mut slip = Encoder::new().skip_header();
+        let mut totals = slip.encode(&[0; 0], &mut output).unwrap();
+        assert_eq!(0, totals.read);
+        assert_eq!(0, totals.written);
+        totals += slip.finish(&mut output[totals.written..]).unwrap();
+        assert_eq!(0, totals.read);
+        assert_eq!(1, totals.written);
         assert_eq!(&EXPECTED, &output[..totals.written]);
     }
 
